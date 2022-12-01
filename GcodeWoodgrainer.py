@@ -265,21 +265,28 @@ class Application(ttk.Frame):
         self.processingStatusValue = ScrolledText(self.outputframe, width=64, height=12)
         self.processingStatusValue.grid(column=1, row=99, sticky=tk.W+tk.E+tk.S+tk.N)
 
-    # Logs a line to the processing status box
     def logLine(self, line):
+        """
+        Logs a line to the processing status box
+        """
         if args.verbose:
             print(line)
         self.log.append(line)
         self.processingStatusValue.delete('1.0', tk.END)
         self.processingStatusValue.insert("1.0", eol.join(self.log))
+        self.processingStatusValue.see(tk.END)
 
-    # Clears the processing status box
     def logClear(self):
+        """
+        Clears the processing status box
+        """
         self.log.clear()
         self.processingStatusValue.delete('1.0', tk.END)
 
-    # Show a file chooser and preview the file
     def chooseFileAndPreview(self):
+        """
+        Show a file chooser and preview the file
+        """
         self.logClear()
         if self.thumbnailImage:
             self.thumbnailImage.grid_forget()
@@ -293,8 +300,10 @@ class Application(ttk.Frame):
         file = fd.askopenfilename(title="Choose a GCODE file to process", filetypes=filetypes)
         return self.setFileAndPreview(file)
 
-    # Set a file name and preview the file
     def setFileAndPreview(self, file):
+        """
+        Set a file name and preview the file
+        """
         self.file = file
         self.filename.set(path.basename(self.file))
         if self.file and path.isfile(self.file):
@@ -312,9 +321,10 @@ class Application(ttk.Frame):
                     self.deactivateSaveButtons()
                     self.logLine('An unknown error occurred: ' + inst)
 
-    # "Preview" the current file
-    # @TODO upgrade preview functionality
     def previewFile(self):
+        """
+        "Preview" the current file
+        """
         self.numLayersInFile = 0
         self.numLinesInFile = 0
         self.activeFileContents = self.activeFile.readlines()
@@ -345,18 +355,24 @@ class Application(ttk.Frame):
         self.numLayers.set(self.numLayersInFile)
         return
 
-    # Turns on the save button
     def activateSaveButtons(self):
+        """
+        Turns on the save button
+        """
         self.saveButton['state'] = tk.NORMAL
         return
 
-    # Turns off the save button
     def deactivateSaveButtons(self):
+        """
+        Turns off the save button
+        """
         self.saveButton['state'] = tk.DISABLED
         return
 
-    # Checks if file is valid for processing
     def checkFileValidity(self):
+        """
+        Checks if file is valid for processing
+        """
         if self.numLinesInFile <= 1:
             raise GcodeEmptyError("Num lines in file <=1 (had %d)" % (self.numLinesInFile))
         if self.numLayersInFile <= 1:
@@ -367,6 +383,9 @@ class Application(ttk.Frame):
         return True
 
     def runProcess(self):
+        """
+        Runs the main temp change process and saves the output
+        """
         parts = path.splitext(path.basename(self.file))
         nfn = "%s_WOODGRAINED.gcode" % (parts[0])
         f = fd.asksaveasfile(initialdir=path.dirname(self.file),
@@ -382,35 +401,73 @@ class Application(ttk.Frame):
             self.minTemp.get(),
             self.maxTemp.get(),
             self.stepTemp.get(),
-            self.numLayersPerTemp.get())
+            self.numLayersPerTemp.get(),
+            pertempchangecallback = self.pertempchangecallback)
 
         self.logLine("%d lines processed, %d layers, %d temperature changes" % (result['numlines'], result['numlayers'], result['numtempchanges']))
 
         f.writelines(result['lines'])
         self.logLine('File saved')
         f.close()
-
         return
 
-def fileHasBeenWoodGrained(contents):
+    def pertempchangecallback(self, line = None, layer = None, linenum = None, newline = None, temp = None):
+        """
+        Logs the current line to the processing output box and temp change
+        """
+        if linenum is not None and layer is not None and temp is not None:
+            self.logLine("Adding temperature %.2f to line %d (layer %d)" % (temp, linenum, layer))
+
+def linesHaveBeenWoodGrained(contents):
+    """
+    Detects if the given lines have been woodgrained already
+    """
     for line in contents:
         if woodgrainedMarker in line:
             return True
     return False
 
 def isWoodgrainedAlreadyLine(line):
+    """
+    Detects if the given line is a woodgrained already line
+    """
     return woodgrainedMarker in line
 
 def isLayerChangeLine(line):
-    if re.search(r'; *(BEFORE_LAYER_CHANGE|LAYER:|WOODGRAIN_INSERT_LAYER)', line):
+    """
+    Detects if the given line is a layer change line
+    """
+    if re.search(r'; *(BEFORE_LAYER_CHANGE|LAYER *:|WOODGRAIN_INSERT_LAYER)', line):
         return True
     else:
         return False
 
-def getTemp(min, max, step):
-    return floor(random.randint(min, max)/step)*step
+def getTemp(min, max, step = 1):
+    """
+    Gets a random temperature between min and max, in intervals of step
+    """
+    return round(random.randint(min, max)/step)*step
 
-def processLines(lines, mintemp, maxtemp, step, linespertemp):
+def makeTempChangeLine(temp):
+    """
+    Returns a gcode temperature change string
+    """
+    return ("M104 S%d ;WOODGRAIN_TEMP"+eol) % (temp)
+
+def processLines(lines,
+    mintemp=200,
+    maxtemp=240,
+    step=5,
+    linespertemp=2,
+    perlinecallback=None,
+    perlayercallback=None,
+    pertempchangecallback=None):
+    """
+    Adds temperature changes to lines at layer changes
+
+    Returns a dict with lines under the lines key, and some
+    other information about the file.
+    """
     curLines = 0
     lineNum = 0
     numLayers = 0
@@ -420,19 +477,22 @@ def processLines(lines, mintemp, maxtemp, step, linespertemp):
         if isWoodgrainedAlreadyLine(line):
             raise GcodeAlreadyWoodifiedError('File has already been woodgrained')
         lineNum = lineNum+1
+        if perlayercallback:
+            perlayercallback(line = line, linenum = lineNum)
         if isLayerChangeLine(line):
+            if perlayercallback:
+                perlayercallback(line = line, linenum = lineNum)
             if curLines >= linespertemp:
                 curTemp = getTemp(mintemp, maxtemp, step)
-                if args.verbose:
-                    print("Processing line %d with temp %d" % (lineNum, curTemp))
-                newlines.insert(lineNum, ("M104 S%d ;WOODGRAIN_TEMP"+eol) % (curTemp))
+                newline = makeTempChangeLine(curTemp)
+                if pertempchangecallback:
+                    pertempchangecallback(line = line, layer = numLayers+1, linenum = lineNum, newline = newline, temp = curTemp)
+                newlines.insert(lineNum, newline)
                 tempChanges = tempChanges + 1;
                 curLines = 0
             curLines = curLines + 1
             numLayers = numLayers + 1;
     newlines.insert(0, woodgrainedMarker+eol)
-    if args.verbose:
-        print("Processing finished - %d temperature changes over %d layers" % (tempChanges, numLayers))
     return {'lines':newlines, 'numlines': lineNum, 'numlayers':numLayers, 'numtempchanges':tempChanges}
 
 def runGui(args):
@@ -470,12 +530,6 @@ def runCmd(args):
         f.write(contents)
     return 1
 
-def main(args):
-    if (args.commandline):
-        return runCmd(args)
-    else:
-        return runGui(args)
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
                         prog = 'Gcode Woodgrainer',
@@ -492,4 +546,7 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 
     args = parser.parse_args()
-    main(args)
+    if (args.commandline):
+        runCmd(args)
+    else:
+        runGui(args)
