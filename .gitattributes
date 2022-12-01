@@ -1,0 +1,4 @@
+example_gcode/example_ok.gcode linguist-vendored=false
+example_gcode/example_output.gcode linguist-vendored=false
+example_gcode/example_bad_nolines.gcode linguist-vendored=false
+example_gcode/example_bad_nolayers.gcode linguist-vendored=false
