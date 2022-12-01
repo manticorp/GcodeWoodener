@@ -1,0 +1,1 @@
+pyinstaller -w -F -i ./logo-icon-150x150.png --add-data "./logo-icon-150x150.ico;." GcodeWoodgrainer.py
