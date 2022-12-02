@@ -8,32 +8,6 @@ Comes with a GUI or can also be used from the command line / terminal
 
 ![Screenshot of the gcode woodener](images/screenshot.png)
 
-## How it works
-
-Filament that contains a certain percentage of wood fibres will appear darker when extruded at higher temperatures.
-
-This fact can be exploted to create a wood grain effect on a print.
-
-By scanning a gcode file and looking for layer changes, we insert an ```M104``` gcode command to vary the temperature as time goes on.
-
-Here is an [example file](example_output.gcode) showing the temperature changes generated using this application, with the following settings:
-
- * min 200&deg;C
- * max 240&deg;C
- * step 5&deg;C
- * layers 2
-
-![Example output screenshot with 200 min, 240 max, 5 step and 2 layers](images/example_preview_slic3r.png)
-
-Here is an [example file](example_output.gcode) showing the temperature changes generated using this application, with the following settings:
-
- * min 200&deg;C
- * max 240&deg;C
- * step 40&deg;C
- * layers 2
-
-![Example output screenshot with 200 min, 240 max, 40 step and 2 layers](images/example_preview_slic3r_2_temperatures.png)
-
 ## Features
 
  * Maximum and Minimum temperature setting
@@ -41,14 +15,27 @@ Here is an [example file](example_output.gcode) showing the temperature changes 
  * Configurable number of layers per temperature change
  * Shows thumbnail embedded in gcode (GUI only)
 
+## Installation
+
+[Download the latest release .exe file here.](https://github.com/manticorp/GcodeWoodener/releases)
+
+Or download the source code and run using python.
+
+## Example Output
+
+![Kubo monkey printed in wood filament](images/output_vs_model.jpg)
+
+Model from [McRats on Thingiverse](https://www.thingiverse.com/thing:2637495)
+
 ## Usage
 
 ### GUI
 
-1. Open your file using the open button
-2. You will be shown the thumbnail and a summary of file info (layers, lines, etc)
-3. Set the parameters which you wish to use for the min/max temp, step and number of layers per temperature change
-4. Hit Save to process the file and save the output
+1. Double click GcodeWoodgrainer.exe
+2. Open your file using the open button
+3. You will be shown the thumbnail and a summary of file info (layers, lines, etc)
+4. Set the parameters which you wish to use for the min/max temp, step and number of layers per temperature change
+5. Hit Save to process the file and save the output
 
 ![Screenshot of the gcode woodener](images/screenshot.png)
 
@@ -96,6 +83,32 @@ Modifies the file ```input.gcode``` using standard parameters and saves it to ``
 
 ```python3 GCodeWoodgrainer.py -o output.gcode input.gcode```
 
+## How it works
+
+Filament that contains a certain percentage of wood fibres will appear darker when extruded at higher temperatures.
+
+This fact can be exploted to create a wood grain effect on a print.
+
+By scanning a gcode file and looking for layer changes, we insert an ```M104``` gcode command to vary the temperature as time goes on.
+
+Here is an [example file](example_output.gcode) showing the temperature changes generated using this application, with the following settings:
+
+ * min 200&deg;C
+ * max 240&deg;C
+ * step 5&deg;C
+ * layers 2
+
+![Example output screenshot with 200 min, 240 max, 5 step and 2 layers](images/example_preview_slic3r.png)
+
+Here is an [example file](example_output.gcode) showing the temperature changes generated using this application, with the following settings:
+
+ * min 200&deg;C
+ * max 240&deg;C
+ * step 40&deg;C
+ * layers 2
+
+![Example output screenshot with 200 min, 240 max, 40 step and 2 layers](images/example_preview_slic3r_2_temperatures.png)
+
 ### Tips
 
 #### Layer Change Detection
@@ -126,8 +139,9 @@ Can be built with pyinstaller. See [build.bat](build.bat) for example Windows bu
 
 - [x] Automate testing
 - [x] Show progress
-- [ ] Include some example printed images
+- [x] Include some example printed images
 - [ ] Make layer change search string configurable
 - [ ] Smooth changes, instead of stepped changes?
+- [ ] Changes within layers for more variation on larger objects
 - [ ] Build for Linux
 - [ ] Build for Mac OS
